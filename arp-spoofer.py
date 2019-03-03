@@ -12,12 +12,26 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  You may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 import scapy.all as scapy
 import time
 import sys
 import argparse
 
+
+# Note: Ensure that Port Forwarding is ON! echo 1 > /proc/sys/net/ipv4/ip_forward
 
 def get_cmd_args():
     parser = argparse.ArgumentParser()
@@ -72,6 +86,7 @@ try:
         packets_sent += 2
         print("\r[+] Packets Sent: " + str(packets_sent)),
         sys.stdout.flush()
+        #change for Python3
         time.sleep(2)
 except KeyboardInterrupt:
     print("\n[-] Restoring target ARP tables...")
