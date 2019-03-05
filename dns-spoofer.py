@@ -21,9 +21,7 @@ import subprocess
 
 # Note: Python2 only due to netfilterqueue
 # Future Improvements
-# Don't create new text line for spoofing msg, HTTPSstrip (in arp-spoofer)
-
-# Bugs: Not working with wlan adapter (iptables config?)
+# HTTPSstrip (in arp-spoofer)
 
 def config_iptables():
     subprocess.call(["iptables", "-I", "FORWARD", "-j", "NFQUEUE", "--queue-num", "0"])
