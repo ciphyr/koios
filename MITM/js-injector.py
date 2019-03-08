@@ -14,20 +14,8 @@
 #  limitations under the License.
 
 
-import netfilterqueue
-import scapy.all as scapy
-import optparse
-import subprocess
-import re
-
-
-# Note: Python2 only due to netfilterqueue
-# Future Improvements
-# Major clean up, fix argparse
-
-def config_iptables():
-    subprocess.call(["iptables", "-I", "FORWARD", "-j", "NFQUEUE", "--queue-num", "0"])
-
+# Future improvement
+# Add argparse
 
 import scapy.all as scapy
 import netfilterqueue
